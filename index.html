@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Tank Strike</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0a0e14;
+    touch-action: none;
+  }
+
+  #game {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #0a0e14 0%, #15202b 60%, #1c2b3a 100%);
+    overflow: hidden;
+  }
+
+  /* Petites "étoiles" pour le décor, purement visuel */
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #4a5c6e;
+    border-radius: 50%;
+  }
+
+  #player {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    left: 50%;
+    top: 75%;
+    transform: translate(-50%, -50%);
+    transition: filter 0.1s;
+    z-index: 10;
+  }
+
+  #player svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  }
+
+  .bullet {
+    position: absolute;
+    width: 6px;
+    height: 16px;
+    background: #f2c84b;
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(242, 200, 75, 0.8);
+    z-index: 5;
+  }
+
+  .enemy {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    z-index: 6;
+  }
+
+  .enemy svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));
+  }
+
+  .explosion {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffd866 0%, #f2884b 40%, transparent 75%);
+    z-index: 7;
+    pointer-events: none;
+    animation: explode 0.3s ease-out forwards;
+  }
+
+  @keyframes explode {
+    0%   { transform: scale(0.3); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  #score {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    color: #e8edf0;
+    font-family: monospace;
+    font-size: 22px;
+    font-weight: bold;
+    z-index: 20;
+    user-select: none;
+  }
+
+  #lives {
+    position: absolute;
+    top: 44px;
+    right: 16px;
+    z-index: 20;
+    font-size: 18px;
+    letter-spacing: 4px;
+    user-select: none;
+  }
+
+  #player.invincible {
+    animation: blink 0.15s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0.3; }
+  }
+
+  #gameover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 14, 20, 0.88);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    color: #e8edf0;
+    font-family: -apple-system, sans-serif;
+    text-align: center;
+  }
+
+  #gameover h1 {
+    font-size: 28px;
+    color: #c25b52;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  #gameover p {
+    font-size: 18px;
+    margin-bottom: 24px;
+    color: #b8c4cc;
+  }
+
+  #restartBtn {
+    background: #4d7a4d;
+    color: white;
+    border: none;
+    padding: 14px 36px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  #restartBtn:active {
+    background: #3f6640;
+  }
+
+  #debug {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    color: #5d7a8c;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 20;
+    user-select: none;
+  }
+
+  #menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #0a0e14 0%, #15202b 60%, #1c2b3a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+    color: #e8edf0;
+    font-family: -apple-system, sans-serif;
+    text-align: center;
+    padding: 24px;
+  }
+
+  #menu .menuIcon {
+    width: 96px;
+    height: 96px;
+    margin-bottom: 16px;
+  }
+
+  #menu h1 {
+    font-size: 32px;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    color: #9fc28a;
+  }
+
+  #menu p {
+    font-size: 15px;
+    color: #8aa0ad;
+    margin-bottom: 32px;
+    max-width: 280px;
+  }
+
+  #playBtn {
+    background: #4d7a4d;
+    color: white;
+    border: none;
+    padding: 16px 48px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+
+  #playBtn:active {
+    background: #3f6640;
+  }
+
+  #hud {
+    display: none; /* visible uniquement pendant la partie */
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="lives">❤️❤️❤️</div>
+  </div>
+  <div id="gameover">
+    <h1>CHAR DÉTRUIT</h1>
+    <p id="finalScore">Score : 0</p>
+    <button id="restartBtn">Rejouer</button>
+  </div>
+  <div id="menu">
+    <svg class="menuIcon" viewBox="0 0 64 64">
+      <rect x="2" y="14" width="10" height="38" rx="3" fill="#2e2e2e"/>
+      <rect x="52" y="14" width="10" height="38" rx="3" fill="#2e2e2e"/>
+      <rect x="12" y="18" width="40" height="34" rx="6" fill="#5a6b4d"/>
+      <rect x="12" y="18" width="40" height="34" rx="6" fill="none" stroke="#3f4a37" stroke-width="2"/>
+      <circle cx="32" cy="32" r="13" fill="#6e8059"/>
+      <circle cx="32" cy="32" r="13" fill="none" stroke="#3f4a37" stroke-width="2"/>
+      <rect x="28" y="0" width="8" height="34" rx="2" fill="#4a5a3f"/>
+    </svg>
+    <h1>TANK STRIKE</h1>
+    <p>Glisse ton doigt pour piloter le char. Le tir est automatique. Détruis les avions ennemis et survis le plus longtemps possible.</p>
+    <button id="playBtn">JOUER</button>
+  </div>
+  <div id="player">
+    <!-- Char vu de dessus, le canon pointe vers le haut de l'écran -->
+    <svg viewBox="0 0 64 64">
+      <!-- Chenilles (gauche / droite) -->
+      <rect x="2" y="14" width="10" height="38" rx="3" fill="#2e2e2e"/>
+      <rect x="52" y="14" width="10" height="38" rx="3" fill="#2e2e2e"/>
+      <rect x="3" y="16" width="8" height="3" fill="#444"/>
+      <rect x="3" y="24" width="8" height="3" fill="#444"/>
+      <rect x="3" y="32" width="8" height="3" fill="#444"/>
+      <rect x="3" y="40" width="8" height="3" fill="#444"/>
+      <rect x="3" y="48" width="8" height="3" fill="#444"/>
+      <rect x="53" y="16" width="8" height="3" fill="#444"/>
+      <rect x="53" y="24" width="8" height="3" fill="#444"/>
+      <rect x="53" y="32" width="8" height="3" fill="#444"/>
+      <rect x="53" y="40" width="8" height="3" fill="#444"/>
+      <rect x="53" y="48" width="8" height="3" fill="#444"/>
+      <!-- Caisse du char -->
+      <rect x="12" y="18" width="40" height="34" rx="6" fill="#5a6b4d"/>
+      <rect x="12" y="18" width="40" height="34" rx="6" fill="none" stroke="#3f4a37" stroke-width="2"/>
+      <!-- Tourelle -->
+      <circle cx="32" cy="32" r="13" fill="#6e8059"/>
+      <circle cx="32" cy="32" r="13" fill="none" stroke="#3f4a37" stroke-width="2"/>
+      <!-- Canon, pointe vers le haut -->
+      <rect x="28" y="0" width="8" height="34" rx="2" fill="#4a5a3f"/>
+      <rect x="28" y="0" width="8" height="34" rx="2" fill="none" stroke="#3f4a37" stroke-width="1.5"/>
+    </svg>
+  </div>
+</div>
+
+<script>
+  const game = document.getElementById('game');
+  const player = document.getElementById('player');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const hudEl = document.getElementById('hud');
+  const gameoverEl = document.getElementById('gameover');
+  const finalScoreEl = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+  const menuEl = document.getElementById('menu');
+  const playBtn = document.getElementById('playBtn');
+
+  let score = 0;
+  let isGameOver = false;
+  let hasStarted = false; // tant que false, rien ne bouge : on est sur le menu
+  let lives = 3;
+  let isInvincible = false;
+  const invincibleDurationMs = 900; // temps pendant lequel on ne peut pas reperdre une vie
+
+  function updateLivesDisplay() {
+    livesEl.textContent = '❤️'.repeat(Math.max(lives, 0));
+  }
+
+  // ----- SONS -----
+  // On génère des bips simples avec Web Audio, pas besoin de fichiers son externes
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playTone(frequency, durationMs, type = 'square', volume = 0.08) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000);
+    osc.stop(audioCtx.currentTime + durationMs / 1000);
+  }
+
+  function sfxShoot() { playTone(620, 70, 'square', 0.04); }
+  function sfxExplosion() { playTone(120, 180, 'sawtooth', 0.09); }
+  function sfxHit() { playTone(90, 350, 'sawtooth', 0.12); }
+
+  // Les navigateurs mobiles bloquent l'audio avant la première interaction :
+  // on "débloque" le contexte au premier toucher
+  function unlockAudio() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function addScore(points) {
+    score += points;
+    scoreEl.textContent = score;
+  }
+
+  // Distance simple entre deux points, utilisée pour détecter les collisions
+  function distance(x1, y1, x2, y2) {
+    return Math.hypot(x1 - x2, y1 - y2);
+  }
+
+  let gameWidth = window.innerWidth;
+  let gameHeight = window.innerHeight;
+
+  // Position actuelle du joueur (centre de l'avion)
+  let playerX = gameWidth / 2;
+  let playerY = gameHeight * 0.75;
+
+  const playerSize = 64;
+  const margin = playerSize / 2;
+
+  function updatePlayerPosition() {
+    player.style.left = playerX + 'px';
+    player.style.top = playerY + 'px';
+  }
+
+  // On limite la position pour que l'avion reste dans l'écran
+  function clampPosition(x, y) {
+    const clampedX = Math.max(margin, Math.min(gameWidth - margin, x));
+    const clampedY = Math.max(margin, Math.min(gameHeight - margin, y));
+    return [clampedX, clampedY];
+  }
+
+  // Gestion tactile : on suit le doigt directement (contrôle "direct")
+  function handleTouchMove(clientX, clientY) {
+    if (isGameOver || !hasStarted) return;
+    [playerX, playerY] = clampPosition(clientX, clientY);
+    updatePlayerPosition();
+  }
+
+  game.addEventListener('touchstart', (e) => {
+    unlockAudio();
+    const touch = e.touches[0];
+    handleTouchMove(touch.clientX, touch.clientY);
+  }, { passive: true });
+
+  game.addEventListener('touchmove', (e) => {
+    const touch = e.touches[0];
+    handleTouchMove(touch.clientX, touch.clientY);
+  }, { passive: true });
+
+  // On garde la souris aussi pour tester facilement sur ordinateur
+  let mouseDown = false;
+  game.addEventListener('mousedown', (e) => {
+    unlockAudio();
+    mouseDown = true;
+    handleTouchMove(e.clientX, e.clientY);
+  });
+  game.addEventListener('mousemove', (e) => {
+    if (mouseDown) handleTouchMove(e.clientX, e.clientY);
+  });
+  window.addEventListener('mouseup', () => mouseDown = false);
+
+  // Décor : on génère quelques étoiles aléatoires une seule fois
+  function createStars() {
+    for (let i = 0; i < 40; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = Math.random() * gameWidth + 'px';
+      star.style.top = Math.random() * gameHeight + 'px';
+      game.appendChild(star);
+    }
+  }
+
+  function handleResize() {
+    gameWidth = window.innerWidth;
+    gameHeight = window.innerHeight;
+    [playerX, playerY] = clampPosition(playerX, playerY);
+    updatePlayerPosition();
+  }
+  window.addEventListener('resize', handleResize);
+
+  // ----- COLLISIONS -----
+
+  function spawnExplosion(x, y) {
+    const boom = document.createElement('div');
+    boom.className = 'explosion';
+    boom.style.left = (x - 24) + 'px';
+    boom.style.top = (y - 24) + 'px';
+    game.appendChild(boom);
+    // On nettoie l'élément une fois l'animation terminée (300ms, voir le CSS)
+    setTimeout(() => boom.remove(), 300);
+  }
+
+  function checkCollisions() {
+    // Obus vs ennemis : on compare chaque obus à chaque ennemi
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      let hit = false;
+
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        const b = bullets[j];
+        // Rayon approximatif : moitié de la taille de l'ennemi + petite marge
+        if (distance(b.x, b.y, e.x, e.y) < enemySize / 2) {
+          b.element.remove();
+          bullets.splice(j, 1);
+          hit = true;
+          break; // un obus suffit à détruire cet ennemi
+        }
+      }
+
+      if (hit) {
+        spawnExplosion(e.x, e.y);
+        sfxExplosion();
+        e.element.remove();
+        enemies.splice(i, 1);
+        addScore(10);
+        continue;
+      }
+
+      // Ennemi vs joueur : distance entre le centre de l'ennemi et le char
+      if (!isInvincible && distance(e.x, e.y, playerX, playerY) < (enemySize / 2 + margin * 0.7)) {
+        spawnExplosion(e.x, e.y);
+        e.element.remove();
+        enemies.splice(i, 1);
+        loseLife();
+        return; // on arrête la vérification pour cette frame
+      }
+    }
+  }
+
+  function loseLife() {
+    lives -= 1;
+    updateLivesDisplay();
+    sfxHit();
+
+    if (lives <= 0) {
+      triggerGameOver();
+      return;
+    }
+
+    // Courte invincibilité pour laisser le temps de réagir, comme dans la plupart des jeux d'arcade
+    isInvincible = true;
+    player.classList.add('invincible');
+    setTimeout(() => {
+      isInvincible = false;
+      player.classList.remove('invincible');
+    }, invincibleDurationMs);
+  }
+
+  function triggerGameOver() {
+    isGameOver = true;
+    finalScoreEl.textContent = 'Score : ' + score;
+    gameoverEl.style.display = 'flex';
+  }
+
+  function resetGame() {
+    hasStarted = true;
+    // On vide tous les obus et ennemis présents à l'écran
+    bullets.forEach(b => b.element.remove());
+    bullets.length = 0;
+    enemies.forEach(e => e.element.remove());
+    enemies.length = 0;
+
+    score = 0;
+    scoreEl.textContent = '0';
+    lives = 3;
+    updateLivesDisplay();
+    isInvincible = false;
+    player.classList.remove('invincible');
+    playerX = gameWidth / 2;
+    playerY = gameHeight * 0.75;
+    updatePlayerPosition();
+
+    elapsedSeconds = 0;
+    spawnIntervalMs = baseSpawnIntervalMs;
+    enemySpeed = baseEnemySpeed;
+    restartSpawnTimer();
+
+    isGameOver = false;
+    gameoverEl.style.display = 'none';
+  }
+
+  restartBtn.addEventListener('click', resetGame);
+
+  function startGame() {
+    unlockAudio();
+    hasStarted = true;
+    menuEl.style.display = 'none';
+    hudEl.style.display = 'block';
+  }
+
+  playBtn.addEventListener('click', startGame);
+
+  // ----- ENNEMIS -----
+
+  const enemies = []; // chaque ennemi : { x, y, element }
+  const enemySize = 48;
+  const baseEnemySpeed = 2.5;       // vitesse de départ
+  const baseSpawnIntervalMs = 1400; // fréquence de départ
+  let enemySpeed = baseEnemySpeed;
+  let spawnIntervalMs = baseSpawnIntervalMs;
+  let elapsedSeconds = 0;
+  let spawnTimerId = null;
+
+  // Toutes les 5 secondes, le jeu devient un peu plus difficile
+  setInterval(() => {
+    if (isGameOver || !hasStarted) return;
+    elapsedSeconds += 5;
+    enemySpeed = baseEnemySpeed + Math.floor(elapsedSeconds / 5) * 0.25;
+    spawnIntervalMs = Math.max(500, baseSpawnIntervalMs - Math.floor(elapsedSeconds / 5) * 80);
+    restartSpawnTimer(); // on relance le minuteur de spawn avec le nouvel intervalle
+  }, 5000);
+
+  function restartSpawnTimer() {
+    if (spawnTimerId) clearInterval(spawnTimerId);
+    spawnTimerId = setInterval(createEnemy, spawnIntervalMs);
+  }
+
+  // Petit avion ennemi en SVG, vu de dessus, orienté vers le bas
+  const enemySvgMarkup = `
+    <svg viewBox="0 0 48 48">
+      <polygon points="24,46 30,32 24,36 18,32" fill="#a5453f"/>
+      <polygon points="24,34 34,8 24,14 14,8" fill="#c25b52"/>
+      <polygon points="2,12 20,18 20,10 2,4" fill="#8a3a35"/>
+      <polygon points="46,12 28,18 28,10 46,4" fill="#8a3a35"/>
+      <circle cx="24" cy="22" r="3.5" fill="#3a1f1d"/>
+    </svg>
+  `;
+
+  function createEnemy() {
+    if (isGameOver || !hasStarted) return;
+    const el = document.createElement('div');
+    el.className = 'enemy';
+    el.innerHTML = enemySvgMarkup;
+    game.appendChild(el);
+
+    // Position de départ aléatoire en largeur, juste au-dessus de l'écran
+    const startX = Math.random() * (gameWidth - enemySize) + enemySize / 2;
+
+    const enemy = {
+      x: startX,
+      y: -enemySize,
+      element: el
+    };
+    enemies.push(enemy);
+
+    el.style.left = (enemy.x - enemySize / 2) + 'px';
+    el.style.top = enemy.y + 'px';
+  }
+
+  restartSpawnTimer();
+
+  function updateEnemies() {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      e.y += enemySpeed;
+      e.element.style.left = (e.x - enemySize / 2) + 'px';
+      e.element.style.top = e.y + 'px';
+
+      // Si l'ennemi sort de l'écran par le bas, on le supprime
+      if (e.y > gameHeight + enemySize) {
+        e.element.remove();
+        enemies.splice(i, 1);
+      }
+    }
+  }
+
+  const bullets = []; // chaque obus est un objet { x, y, element }
+  const bulletSpeed = 9;       // pixels parcourus par frame
+  const fireIntervalMs = 280;  // délai entre deux tirs
+
+  function createBullet() {
+    if (isGameOver || !hasStarted) return;
+    const el = document.createElement('div');
+    el.className = 'bullet';
+    game.appendChild(el);
+
+    // L'obus part du sommet du canon, donc du centre-haut de l'avion
+    const bullet = {
+      x: playerX,
+      y: playerY - margin,
+      element: el
+    };
+    bullets.push(bullet);
+    sfxShoot();
+  }
+
+  // On tire toutes les 280ms, indépendamment des déplacements
+  setInterval(createBullet, fireIntervalMs);
+
+  function updateBullets() {
+    // On parcourt à l'envers pour pouvoir retirer des éléments sans casser la boucle
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.y -= bulletSpeed;
+      b.element.style.left = b.x + 'px';
+      b.element.style.top = b.y + 'px';
+
+      // Si l'obus sort de l'écran par le haut, on le supprime (mémoire + performance)
+      if (b.y < -20) {
+        b.element.remove();
+        bullets.splice(i, 1);
+      }
+    }
+  }
+
+  // ----- BOUCLE PRINCIPALE DU JEU -----
+  // requestAnimationFrame relance cette fonction ~60 fois par seconde
+  function gameLoop() {
+    if (!isGameOver && hasStarted) {
+      updateBullets();
+      updateEnemies();
+      checkCollisions();
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  createStars();
+  updatePlayerPosition();
+  updateLivesDisplay();
+  gameLoop();
+
+  // Enregistrement du service worker pour le fonctionnement hors-ligne
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.log('Service worker non enregistré :', err);
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
